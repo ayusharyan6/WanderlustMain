@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 
@@ -11,28 +11,27 @@ export default function CreateListing() {
     price: "",
     image: "",
   });
-  const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result;
-      setData((prev) => ({ ...prev, image: base64 }));
-      setPreview(base64);
-    };
-    reader.readAsDataURL(file);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  const handleImageUrlChange = (e) => {
+    const imageUrl = e.target.value;
+    setData((prev) => ({ ...prev, image: imageUrl }));
   };
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     if (!data.image) {
-      setError("Please select an image");
+      setError("Please provide an image URL");
       return;
     }
     setLoading(true);
@@ -41,10 +40,17 @@ export default function CreateListing() {
       price: Number(data.price) || 0,
     };
     try {
-      await api.post("/listings/createListing", payload);
-      navigate("/");
+      const response = await api.post("/listings/createListing", payload);
+      if (response.status === 201) {
+        navigate("/");
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create listing");
+      if (err.response?.status === 401) {
+        setError("Please log in to create a listing");
+        setTimeout(() => navigate("/login"), 2000);
+      } else {
+        setError(err.response?.data?.message || "Failed to create listing. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -92,14 +98,15 @@ export default function CreateListing() {
           onChange={(e) => setData({ ...data, price: e.target.value })}
           required
         />
-        <label>Image (file)</label>
-        <input type="file" accept="image/*" onChange={handleFile} />
-        {preview && (
-          <div className="image-preview">
-            <img src={preview} alt="Preview" />
-          </div>
-        )}
-        {!preview && data.image && (
+        <label>Image URL</label>
+        <input
+          type="url"
+          placeholder="https://example.com/image.jpg"
+          value={data.image}
+          onChange={handleImageUrlChange}
+          required
+        />
+        {data.image && (
           <div className="image-preview">
             <img src={data.image} alt="Preview" />
           </div>

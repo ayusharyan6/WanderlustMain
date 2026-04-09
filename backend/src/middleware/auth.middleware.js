@@ -18,7 +18,7 @@ const protect = async (req, res, next) => {
     }
 
     // verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_secret_key");
 
     // get user from DB
     const user = await User.findById(decoded.id).select("-password");
@@ -32,8 +32,10 @@ const protect = async (req, res, next) => {
     next();
 
   } catch (error) {
+    console.error("Auth middleware error:", error);
     return res.status(401).json({
       message: "Not authorized, token invalid",
+      error: error.message,
     });
   }
 };

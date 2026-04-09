@@ -39,6 +39,7 @@ export const signup = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Signup error:", error);
     res.status(500).json({
       message: "Signup failed",
       error: error.message,
@@ -74,8 +75,8 @@ export const login = async (req, res) => {
     //JWT TOKEN 
     const token = jwt.sign(
       { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      process.env.JWT_SECRET || "default_secret_key",
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
     res.status(200).json({
@@ -88,6 +89,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Login error:", error);
     res.status(500).json({
       message: "Login failed",
       error: error.message,

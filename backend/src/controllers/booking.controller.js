@@ -20,7 +20,7 @@ export const createBooking = async (req, res) => {
     // user cannot book own listing
     if (listing.host.toString() === userId.toString()) {
       return res.status(403).json({
-        message: "You cannot book your own listing",
+        message: "You cannot book your own listing. Please book listings created by other hosts.",
       });
     }
 

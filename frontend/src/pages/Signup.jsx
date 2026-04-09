@@ -13,22 +13,30 @@ export default function Signup() {
     setError("");
     setLoading(true);
     try {
-      await api.post("/auth/signup", form);
-      const loginRes = await api.post("/auth/login", {
-        email: form.email,
-        password: form.password,
-      });
-      localStorage.setItem("token", loginRes.data.token);
-      if (loginRes.data.user) {
-        localStorage.setItem("user", JSON.stringify({
-          id: loginRes.data.user.id,
-          name: loginRes.data.user.name,
-          email: loginRes.data.user.email,
-        }));
+      const signupRes = await api.post("/auth/signup", form);
+      
+      // Only proceed to login if signup was successful
+      if (signupRes.status === 201) {
+        try {
+          const loginRes = await api.post("/auth/login", {
+            email: form.email,
+            password: form.password,
+          });
+          localStorage.setItem("token", loginRes.data.token);
+          if (loginRes.data.user) {
+            localStorage.setItem("user", JSON.stringify({
+              id: loginRes.data.user.id,
+              name: loginRes.data.user.name,
+              email: loginRes.data.user.email,
+            }));
+          }
+          navigate("/");
+        } catch (loginErr) {
+          setError(loginErr.response?.data?.message || "Account created but login failed. Please try logging in.");
+        }
       }
-      navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Signup failed");
+      setError(err.response?.data?.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
