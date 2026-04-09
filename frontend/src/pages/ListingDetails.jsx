@@ -4,6 +4,24 @@ import api from "../api/axios";
 import ListingMap from "../components/ListingMap";
 import { getDemoListingById, isDemoId } from "../data/demoListings";
 
+const getEntityId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value._id || value.id || "";
+};
+
+const getUserIdFromToken = (token) => {
+  try {
+    if (!token) return "";
+    const payload = token.split(".")[1];
+    if (!payload) return "";
+    const decoded = JSON.parse(atob(payload));
+    return decoded?.id || "";
+  } catch {
+    return "";
+  }
+};
+
 export default function ListingDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -21,6 +39,7 @@ export default function ListingDetails() {
   const token = localStorage.getItem("token");
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
+  const currentUserId = getEntityId(user) || getUserIdFromToken(token);
   const isDemo = isDemoId(id);
   const demoListing = isDemo ? getDemoListingById(id) : null;
   const effectiveListing = isDemo ? demoListing : listing;
@@ -28,10 +47,8 @@ export default function ListingDetails() {
   const effectiveError = isDemo && !demoListing ? "Listing not found" : error;
   
   // Check if current user is the owner
-  const isOwner = !isDemo && user && effectiveListing?.host && (
-    String(effectiveListing.host._id) === String(user.id) || 
-    String(effectiveListing.host) === String(user.id)
-  );
+  const hostId = getEntityId(effectiveListing?.host);
+  const isOwner = !isDemo && Boolean(currentUserId) && Boolean(hostId) && String(hostId) === String(currentUserId);
 
   useEffect(() => {
     if (isDemoId(id)) return;
