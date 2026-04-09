@@ -11,6 +11,7 @@ export default function ListingDetails() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const [booking, setBooking] = useState({ checkIn: "", checkOut: "", guests: 1 });
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
@@ -21,20 +22,19 @@ export default function ListingDetails() {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
   const isDemo = isDemoId(id);
-  const isOwner = !isDemo && user && listing?.host && String(listing.host._id) === String(user.id);
+  const demoListing = isDemo ? getDemoListingById(id) : null;
+  const effectiveListing = isDemo ? demoListing : listing;
+  const effectiveLoading = isDemo ? false : loading;
+  const effectiveError = isDemo && !demoListing ? "Listing not found" : error;
+  
+  // Check if current user is the owner
+  const isOwner = !isDemo && user && effectiveListing?.host && (
+    String(effectiveListing.host._id) === String(user.id) || 
+    String(effectiveListing.host) === String(user.id)
+  );
 
   useEffect(() => {
-    if (isDemoId(id)) {
-      const demo = getDemoListingById(id);
-      if (demo) {
-        setListing(demo);
-        setReviews([]);
-      } else {
-        setError("Listing not found");
-      }
-      setLoading(false);
-      return;
-    }
+    if (isDemoId(id)) return;
     api
       .get(`/listings/${id}`)
       .then((res) => setListing(res.data.listing))
@@ -50,7 +50,7 @@ export default function ListingDetails() {
       .catch(() => setReviews([]));
   }, [id]);
 
-  const requireAuth = (action) => {
+  const requireAuth = () => {
     if (!token) {
       navigate("/login");
       return true;
@@ -61,23 +61,37 @@ export default function ListingDetails() {
   const handleBook = (e) => {
     e.preventDefault();
     setBookingError("");
-    if (requireAuth("book")) return;
-    if (isOwner) return;
-    if (isDemo) return;
+    if (requireAuth()) return;
+    if (isOwner) {
+      setBookingError("You cannot book your own listing.");
+      return;
+    }
+    if (isDemo) {
+      setBookingError("Demo listings cannot be booked. Please book real listings.");
+      return;
+    }
     api
       .post("/bookings", {
         listingId: id,
         checkIn: booking.checkIn,
         checkOut: booking.checkOut,
+        guests: booking.guests,
       })
-      .then(() => navigate("/my-bookings"))
-      .catch((err) => setBookingError(err.response?.data?.message || "Booking failed"));
+      .then((res) => {
+        if (res.status === 201) {
+          navigate("/my-bookings");
+        }
+      })
+      .catch((err) => {
+        const errorMsg = err.response?.data?.message || "Booking failed. Please try again.";
+        setBookingError(errorMsg);
+      });
   };
 
   const submitReview = (e) => {
     e.preventDefault();
     setReviewError("");
-    if (requireAuth("review")) return;
+    if (requireAuth()) return;
     if (isOwner) return;
     if (isDemo) return;
     api
@@ -97,12 +111,43 @@ export default function ListingDetails() {
       .catch(() => {});
   };
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
-  if (error || !listing) return <div className="container"><p className="error">{error || "Not found"}</p></div>;
+  const handleDeleteListing = async () => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    if (isDemo) return;
+    if (!isOwner) return;
 
-  const locationText = [listing.location, listing.country].filter(Boolean).join(", ");
+    const ok = window.confirm("Delete this listing? This action cannot be undone.");
+    if (!ok) return;
+
+    setDeleteError("");
+    try {
+      await api.delete(`/listings/${id}`);
+      navigate("/");
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || "Failed to delete listing");
+    }
+  };
+
+  if (effectiveLoading) return <div className="container"><p>Loading...</p></div>;
+  if (effectiveError || !effectiveListing) {
+    return <div className="container"><p className="error">{effectiveError || "Not found"}</p></div>;
+  }
+
+  const locationText = [effectiveListing.location, effectiveListing.country].filter(Boolean).join(", ");
 
   const renderBookingSection = () => {
+    // If user is the owner, don't show booking form
+    if (isOwner) {
+      return (
+        <div className="auth-cta auth-cta-muted">
+          <p className="auth-cta-text">This is your listing. You cannot book your own property.</p>
+        </div>
+      );
+    }
+    
     if (isDemo) {
       if (!token) {
         return (
@@ -116,10 +161,11 @@ export default function ListingDetails() {
       }
       return (
         <div className="auth-cta auth-cta-muted">
-          <p className="auth-cta-text">This is a demo listing. Sign up and create real listings, or book from real stays.</p>
+          <p className="auth-cta-text">This is a demo listing. You can only book real listings created by other users.</p>
         </div>
       );
     }
+    
     if (!token) {
       return (
         <div className="auth-cta">
@@ -130,6 +176,8 @@ export default function ListingDetails() {
         </div>
       );
     }
+    
+    // Show booking form for real listings that user doesn't own
     return (
       <form onSubmit={handleBook} className="form">
         <label>Check-in</label>
@@ -138,6 +186,7 @@ export default function ListingDetails() {
           value={booking.checkIn}
           onChange={(e) => setBooking({ ...booking, checkIn: e.target.value })}
           required
+          min={new Date().toISOString().split('T')[0]}
         />
         <label>Check-out</label>
         <input
@@ -145,6 +194,7 @@ export default function ListingDetails() {
           value={booking.checkOut}
           onChange={(e) => setBooking({ ...booking, checkOut: e.target.value })}
           required
+          min={booking.checkIn || new Date().toISOString().split('T')[0]}
         />
         <label>Guests</label>
         <input
@@ -154,7 +204,7 @@ export default function ListingDetails() {
           onChange={(e) => setBooking({ ...booking, guests: Number(e.target.value) || 1 })}
         />
         {bookingError && <p className="error">{bookingError}</p>}
-        <button type="submit">Book</button>
+        <button type="submit">Book Now</button>
       </form>
     );
   };
@@ -215,28 +265,35 @@ export default function ListingDetails() {
     <div className="container">
       <div className="listing-detail">
         <img
-          src={listing.image || "https://via.placeholder.com/800x400?text=No+Image"}
-          alt={listing.title}
+          src={effectiveListing.image || "https://via.placeholder.com/800x400?text=No+Image"}
+          alt={effectiveListing.title}
           className="detail-img"
         />
-        <h2>{listing.title}</h2>
+        <h2>{effectiveListing.title}</h2>
         <p className="location">{locationText}</p>
-        <p className="detail-desc">{listing.description}</p>
-        <p className="price">₹{listing.price} / night</p>
-        {listing.host && <p className="host">Host: {listing.host.name}</p>}
+        <p className="detail-desc">{effectiveListing.description}</p>
+        <p className="price">₹{effectiveListing.price} / night</p>
+        {effectiveListing.host && <p className="host">Host: {effectiveListing.host.name}</p>}
+
+        {!isDemo && isOwner && (
+          <div style={{ marginTop: 12 }}>
+            {deleteError && <p className="error" style={{ marginBottom: 10 }}>{deleteError}</p>}
+            <button type="button" className="btn-delete" onClick={handleDeleteListing}>
+              Delete listing
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="detail-map">
         <h3>Location</h3>
-        <ListingMap location={listing.location} country={listing.country} />
+        <ListingMap location={effectiveListing.location} country={effectiveListing.country} />
       </div>
 
-      {!isOwner && (
-        <div className="detail-booking">
-          <h3>Book this place</h3>
-          {renderBookingSection()}
-        </div>
-      )}
+      <div className="detail-booking">
+        <h3>Book this place</h3>
+        {renderBookingSection()}
+      </div>
 
       <div className="detail-reviews">
         <h3>Reviews</h3>

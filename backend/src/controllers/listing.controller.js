@@ -4,9 +4,6 @@ import Listing from "../models/Listing.js";
 
 export const createListing = async (req, res) => {
   try {
-    console.log("hii");
-    console.log(req.body);
-
     const { title, description, location, country, price, image } = req.body;
 
     if (!title || !description || !location || !country || !price) {
@@ -14,14 +11,25 @@ export const createListing = async (req, res) => {
         message: "All fields are required",
       });
     }
-    console.log("hello")
+
+    if (!image) {
+      return res.status(400).json({
+        message: "Image URL is required",
+      });
+    }
+
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        message: "User authentication required",
+      });
+    }
 
     const listing = await Listing.create({
       title,
       description,
       location,
       country,
-      price,
+      price: Number(price),
       image,
       host: req.user._id, 
     });
@@ -31,7 +39,36 @@ export const createListing = async (req, res) => {
       listing,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create listing error:", error);
+    res.status(500).json({ 
+      message: "Failed to create listing",
+      error: error.message 
+    });
+  }
+};
+
+// DELETE LISTING (only host/owner)
+export const deleteListing = async (req, res) => {
+  try {
+    const listing = await Listing.findById(req.params.id);
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
+    if (!req.user?._id) {
+      return res.status(401).json({ message: "User authentication required" });
+    }
+
+    if (String(listing.host) !== String(req.user._id)) {
+      return res.status(403).json({ message: "You are not allowed to delete this listing" });
+    }
+
+    await Listing.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({ message: "Listing deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 

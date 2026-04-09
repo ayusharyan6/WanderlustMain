@@ -8,13 +8,16 @@ import cors from "cors";
 
 const app = express();
 app.use(cors({
-    origin: [
-      'http://localhost:8080',
-      'http://172.21.2.195:8080',
-      'https://jigsaw-pi.vercel.app'
-    ],
-    credentials: true
-  }));  
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',   
+    'http://localhost:8080',
+    'http://172.21.2.195:8080',
+    'https://jigsaw-pi.vercel.app'
+  ],
+  credentials: true
+}));
+ 
 
 app.use(express.json());
 

@@ -6,7 +6,7 @@ export default function ListingMap({ location, country }) {
 
   useEffect(() => {
     if (!query.trim()) {
-      setSrc(null);
+      queueMicrotask(() => setSrc(null));
       return;
     }
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
