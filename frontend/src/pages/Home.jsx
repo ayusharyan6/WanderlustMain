@@ -12,27 +12,26 @@ export default function Home() {
     const fetchListings = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
 
-        // If user is not logged in, only show demo listings (with images)
-        if (!token) {
-          const demoListings = getDemoListings().filter((l) => Boolean(l.image));
-          setListings(demoListings);
-          setError("");
-          return;
-        }
+        // DIRECT BACKEND CALL (no token check)
+        const response = await api.get("/listings");
 
-        const response = await api.get("/listings/");
-        const apiListings = (response.data || []).filter((l) => Boolean(l.image));
+        const apiListings = (response.data || []).filter(
+          (l) => Boolean(l.image)
+        );
 
-        // Logged-in users see real listings only (with images)
         setListings(apiListings);
         setError("");
       } catch (err) {
         console.error("Error fetching listings:", err);
-        // If API fails, show demo listings as fallback (with images)
-        setListings(getDemoListings().filter((l) => Boolean(l.image)));
-        setError("Could not load listings from server. Showing demo listings.");
+
+        // fallback demo data
+        const demoListings = getDemoListings().filter((l) =>
+          Boolean(l.image)
+        );
+
+        setListings(demoListings);
+        setError("Server down. Showing demo listings.");
       } finally {
         setLoading(false);
       }
@@ -53,9 +52,15 @@ export default function Home() {
   return (
     <div className="container">
       <h2 className="page-title">Explore stays</h2>
-      {error && <p className="error" style={{ marginBottom: "20px" }}>{error}</p>}
+
+      {error && (
+        <p className="error" style={{ marginBottom: "20px" }}>
+          {error}
+        </p>
+      )}
+
       {listings.length === 0 ? (
-        <p className="empty-state">No listings available at the moment.</p>
+        <p className="empty-state">No listings available.</p>
       ) : (
         <div className="listing-grid">
           {listings.map((listing) => (
