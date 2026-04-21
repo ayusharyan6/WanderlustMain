@@ -1,5 +1,5 @@
 # WanderlustMain
-# 🌍 WanderLust – Airbnb Clone
+# 🌍 WanderLust – A Travel Stay Booking Platform.
 
 A full-stack Airbnb-like web application built using the MERN stack with real-time listings, authentication, and booking features.
 
