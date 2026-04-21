@@ -7,21 +7,18 @@ import bookingRoutes from "./routes/booking.routes.js";
 import cors from "cors";
 
 const app = express();
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',   
-    'http://localhost:8080',
-    'http://172.21.2.195:8080',
-    'https://jigsaw-pi.vercel.app',
-    "https://wanderlust-main-alpha.vercel.app"
-  ],
-  credentials: true
-}));
- 
 
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
+// Middleware
 app.use(express.json());
 
+// Routes
 app.use("/", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/listings", listingRoutes);
