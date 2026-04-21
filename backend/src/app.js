@@ -13,7 +13,8 @@ app.use(cors({
     'http://localhost:5174',   
     'http://localhost:8080',
     'http://172.21.2.195:8080',
-    'https://jigsaw-pi.vercel.app'
+    'https://jigsaw-pi.vercel.app',
+    "https://wanderlust-main-alpha.vercel.app"
   ],
   credentials: true
 }));
