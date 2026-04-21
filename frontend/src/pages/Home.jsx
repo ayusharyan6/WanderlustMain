@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getDemoListings } from "../data/demoListings";
 import ListingCard from "../components/ListingCard";
 import api from "../api/axios";
 
@@ -13,7 +12,6 @@ export default function Home() {
       try {
         setLoading(true);
 
-        // DIRECT BACKEND CALL (no token check)
         const response = await api.get("/listings");
 
         const apiListings = (response.data || []).filter(
@@ -25,19 +23,15 @@ export default function Home() {
       } catch (err) {
         console.error("Error fetching listings:", err);
 
-        // fallback demo data
-        const demoListings = getDemoListings().filter((l) =>
-          Boolean(l.image)
-        );
-
-        setListings(demoListings);
-        setError("Server down. Showing demo listings.");
+        // ❌ no demo fallback
+        setError("Failed to load listings. Please refresh.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchListings();
+    // 🔥 Delay for Render (backend wake-up)
+    setTimeout(fetchListings, 1500);
   }, []);
 
   if (loading) {
@@ -54,7 +48,7 @@ export default function Home() {
       <h2 className="page-title">Explore stays</h2>
 
       {error && (
-        <p className="error" style={{ marginBottom: "20px" }}>
+        <p className="error" style={{ marginBottom: "20px", color: "red" }}>
           {error}
         </p>
       )}
